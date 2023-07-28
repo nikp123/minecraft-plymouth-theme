@@ -1,0 +1,241 @@
+#
+# Text functions
+#
+fun create_text_color(text, x, y, r, g, b) {
+	t.image = Image.Text(text, r, g, b, 1, global.font);
+	s.image = Image.Text(text, r/4, g/4, b/4, 1, global.font);
+	y *= (Window.GetHeight() - t.image.GetHeight());
+	x *= (Window.GetWidth()  - t.image.GetWidth());
+
+	t.sprite = Sprite(t.image);
+	s.sprite = Sprite(s.image);
+	t.sprite.SetPosition(x, y, 2);
+	s.sprite.SetPosition(x+global.scale, y+global.scale, 1);
+	t.sprite.SetOpacity(1);
+	s.sprite.SetOpacity(1);
+	return [t, s, text];
+}
+
+# This language sucks
+fun delete_text(text) {
+	text[0].sprite.SetOpacity(0);
+	text[1].sprite.SetOpacity(0);
+}
+
+# sin, i know.
+fun undelete_text(text) {
+	text[0].sprite.SetOpacity(1.0);
+	text[1].sprite.SetOpacity(1.0);
+}
+
+fun create_text(text, x, y) {
+	return create_text_color(text, x, y, 1, 1, 1);
+}
+
+fun change_position(thing, x, y) {
+	y *= (Window.GetHeight() - thing[0].image.GetHeight());
+	x *= (Window.GetWidth()  - thing[0].image.GetWidth());
+	change_position_abs(thing, x, y);
+}
+
+fun change_position_abs(thing, x, y) {
+	thing[0].sprite.SetPosition(x, y, 2);
+	thing[1].sprite.SetPosition(x+global.scale, y+global.scale, 1);
+}
+
+fun text_height(text) {
+	return text[0].image.GetHeight() + global.scale;
+}
+
+
+scale = Math.Min(12, Math.Max(1, Math.Min((Window.GetWidth() / 320), (Window.GetHeight() / 240))));
+font = "Minecraft Regular " + 6.8*global.scale;
+
+Window.SetBackgroundTopColor(0.5, 0.5, 0.5);
+Window.SetBackgroundBottomColor(0.5, 0.5, 0.5);
+
+
+background.image_scaled = Image("dirt/" + scale*2 + ".png"); 
+
+# Simple tiling
+background.image_tiled  = background.image_scaled.Tile(Window.GetWidth(), Window.GetHeight());
+background.sprite       = Sprite(background.image_tiled);
+background.sprite.SetPosition(0, 0, -1);
+background.sprite.SetOpacity(1);
+
+
+status = "normal";	
+status_message = []; 
+
+fun dialog_setup() {
+	box.image = Image("bar/" + scale  + ".png");
+	box.sprite = Sprite(box.image);
+	box.x = (Window.GetWidth() - box.image.GetWidth()) / 2;
+	box.y = (Window.GetHeight() * 0.5) - (box.image.GetHeight()/2);
+	box.z = 10;
+	box.sprite.SetPosition(box.x, box.y, box.z);
+
+	pad.image = Image("padlock/" + scale + ".png");
+	pad.sprite = Sprite(pad.image);
+	pad.x = box.x - pad.image.GetWidth() * 1.5;
+	pad.y = box.y;
+	pad.z = box.z;
+	pad.sprite.SetPosition(pad.x, pad.y, pad.z);
+
+	hint.text=" ";
+	hint.image = Image.Text(hint.text, 1, 1, 1, 1, global.font);
+	hint.sprite = Sprite(hint.image);
+	hint.x = box.x + pad.image.GetHeight() / 4;
+	hint.y = box.y + pad.image.GetHeight() / 4;
+	hint.z = box.z + 1;
+	hint.sprite.SetPosition(hint.x, hint.y, hint.z);
+
+	global.dialog.box  = box;
+	global.dialog.pad  = pad;
+	global.dialog.hint = hint;
+
+	dialog_opacity(1);
+}
+
+fun dialog_opacity(opacity) {
+	dialog.box.sprite.SetOpacity(opacity);
+	dialog.pad.sprite.SetOpacity(opacity);
+	dialog.hint.sprite.SetOpacity(opacity);
+}
+
+#
+# Plymouth callbacks
+#
+fun display_normal_callback() {
+	global.status = "normal";
+	
+	global.progress_box.sprite.SetOpacity(1);
+	global.progress_bar.sprite.SetOpacity(1);
+	dialog_opacity(0);
+	undelete_text(global.text);
+}
+
+fun display_password_callback(prompt, bullets) {
+	global.status = "password";
+
+	global.progress_box.sprite.SetOpacity(0);
+	global.progress_bar.sprite.SetOpacity(0);
+	delete_text(global.text);
+	
+	if(!global.dialog) {
+		dialog_setup();
+	} else {
+		dialog_opacity(1);
+	}
+	
+	hinttext="";
+	for(i=0; i < bullets && i < 41; i++) {
+		hinttext += "*";	
+	}
+	if(bullets >= 41) {
+		hinttext = "..." + hinttext;
+	}
+
+	global.dialog.hint.image = Image.Text(hinttext, 1, 1, 1, 1, global.font);
+	global.dialog.hint.sprite.SetImage(global.dialog.hint.image);
+}
+
+fun quit_callback() {
+}
+
+messages = [];
+message_latest = 0;
+fun display_message_callback(text) {
+	messages[message_latest] = create_text(text, 0, 1);
+	height = Window.GetHeight() - text_height(messages[0]);
+	for(i = message_latest - 1; i >= 0; i--) {
+		if(messages[i] == NULL)
+			continue;
+		height -= text_height(messages[i+1]);
+		change_position_abs(messages[i], 0, height);
+	}	
+	message_latest++;
+}
+
+fun hide_message_callback(text) {
+	for(i = 0; i < message_latest; i++) {
+		if(messages[i][2] == text) {
+			delete_text(text);
+			messages[i] = NULL;
+		}
+	}
+}
+
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+Plymouth.SetQuitFunction(quit_callback);
+Plymouth.SetDisplayMessageFunction(display_message_callback);
+Plymouth.SetHideMessageFunction(hide_message_callback);
+
+#
+# Animation code
+#
+
+
+if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.GetMode() == "system-upgrade" || Plymouth.GetMode() == "firmware-upgrade") {
+	progress_box.image = Image("progress_box.png");
+	progress_box.image_scaled = progress_box.image.Scale(progress_box.image.GetWidth() * 2 * scale, progress_box.image.GetHeight() * 2 * scale); 
+	progress_box.sprite = Sprite(progress_box.image_scaled);
+	progress_box.x = (Window.GetWidth() / 2) - (progress_box.image_scaled.GetWidth() / 2);
+	progress_box.y = (Window.GetHeight() * 0.65) - (progress_box.image_scaled.GetHeight() / 2);
+	progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
+	progress_box.sprite.SetOpacity(1);
+	
+	progress_bar.image = Image("progress_bar.png");
+	progress_bar.image_scaled = progress_bar.image.Scale(progress_bar.image.GetWidth() * 2 * scale, progress_bar.image.GetHeight() * 2 * scale); 
+	progress_bar.sprite = Sprite(progress_bar.image_scaled);
+	progress_bar.x = progress_box.x;
+	progress_bar.y = progress_box.y;
+	progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 2);
+	progress_bar.sprite.SetOpacity(1);
+
+	message = "This animation has bugged!";
+	if(Plymouth.GetMode() == "boot")
+		message = "Booting OS";
+	else if(Plymouth.GetMode() == "updates")
+		message = "Updating";
+	else if(Plymouth.GetMode() == "system-upgrade")
+		message = "Upgrading system";
+	else if(Plymouth.GetMode() == "firmware-upgrade") {
+		message = "Upgrading system firmware";
+		text = create_text_color("DO NOT POWER OFF SYSTEM!", 0.5, 0.05, 1, 0, 0); 
+	}
+
+	text = create_text(message, 0.5, 0.45); 
+	global.text = text;
+
+	fun progress_callback(duration, progress) {
+		if(global.status != "password") {
+			progress_bar.image_scaled_new = progress_bar.image.Scale(progress_box.image.GetWidth() * 2 * scale * progress, progress_bar.image.GetHeight() * 2 * scale); 
+			progress_bar.sprite.SetImage(progress_bar.image_scaled_new);
+		}
+	}
+
+	fun update_status_callback(text) {
+		delete_text(global.status_message);
+		global.status_message = create_text(text, 0.5, 0.55); 
+	}
+
+	Plymouth.SetUpdateStatusFunction(update_status_callback);
+	Plymouth.SetBootProgressFunction(progress_callback);
+}
+
+if (Plymouth.GetMode() == "shutdown") {
+	text = create_text("Saving files and shutting down", 0.5, 0.5); 
+}
+
+if (Plymouth.GetMode() == "reboot") {
+	text = create_text("Restarting", 0.5, 0.5); 
+}
+
+# Only shown if you somehow break this
+if (Plymouth.GetMode() == "unknown") {
+	text = create_text("This goes great with MineGRUB", 0.5, 0.5); 
+}
+
+
