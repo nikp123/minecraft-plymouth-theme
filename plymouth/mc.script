@@ -55,7 +55,7 @@ Window.SetBackgroundTopColor(0.5, 0.5, 0.5);
 Window.SetBackgroundBottomColor(0.5, 0.5, 0.5);
 
 
-background.image_scaled = Image("dirt/" + scale*2 + ".png"); 
+background.image_scaled = Image("dirt-" + scale*2 + ".png"); 
 
 # Simple tiling
 background.image_tiled  = background.image_scaled.Tile(Window.GetWidth(), Window.GetHeight());
@@ -68,14 +68,14 @@ status = "normal";
 status_message = []; 
 
 fun dialog_setup() {
-	box.image = Image("bar/" + scale  + ".png");
+	box.image = Image("bar-" + scale  + ".png");
 	box.sprite = Sprite(box.image);
 	box.x = (Window.GetWidth() - box.image.GetWidth()) / 2;
 	box.y = (Window.GetHeight() * 0.5) - (box.image.GetHeight()/2);
 	box.z = 10;
 	box.sprite.SetPosition(box.x, box.y, box.z);
 
-	pad.image = Image("padlock/" + scale + ".png");
+	pad.image = Image("padlock-" + scale + ".png");
 	pad.sprite = Sprite(pad.image);
 	pad.x = box.x - pad.image.GetWidth() * 1.5;
 	pad.y = box.y;
