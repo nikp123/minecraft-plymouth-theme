@@ -10,7 +10,8 @@ fun create_text_color(text, x, y, r, g, b) {
 	t.sprite = Sprite(t.image);
 	s.sprite = Sprite(s.image);
 	t.sprite.SetPosition(x, y, 2);
-	s.sprite.SetPosition(x+global.scale, y+global.scale, 1);
+        # Plus here is intentional
+	s.sprite.SetPosition(x + global.scale, y + global.scale, 1);
 	t.sprite.SetOpacity(1);
 	s.sprite.SetOpacity(1);
 	return [t, s, text];
@@ -44,16 +45,27 @@ fun change_position_abs(thing, x, y) {
 }
 
 fun text_height(text) {
+        # Plus here is intentional
 	return text[0].image.GetHeight() + global.scale;
 }
 
+fun text_height_adj() {
+	return text_height(global.textblank) / Window.GetHeight() / global.scale;
+}
 
-scale = Math.Min(12, Math.Max(1, Math.Min((Window.GetWidth() / 320), (Window.GetHeight() / 240))));
+# lets avoid autoscaling because it breaks things :)
+scale_width  = Math.Int(Window.GetWidth() / 640);
+scale_height = Math.Int(Window.GetHeight() / 480);
+scale = Math.Max(scale_width, scale_height, 1);
+scale = Math.Int(Math.Min(6, scale));
+
+
 font = "Minecraft Regular " + 6.8*global.scale;
 
 Window.SetBackgroundTopColor(0.5, 0.5, 0.5);
 Window.SetBackgroundBottomColor(0.5, 0.5, 0.5);
 
+textblank = create_text(" ", 0, 0); 
 
 background.image_scaled = Image("dirt-" + scale*2 + ".png"); 
 
@@ -67,11 +79,11 @@ background.sprite.SetOpacity(1);
 status = "normal";	
 status_message = []; 
 
-fun dialog_setup() {
+fun dialog_setup(text) {
 	box.image = Image("bar-" + scale  + ".png");
 	box.sprite = Sprite(box.image);
 	box.x = (Window.GetWidth() - box.image.GetWidth()) / 2;
-	box.y = (Window.GetHeight() * 0.5) - (box.image.GetHeight()/2);
+	box.y = (Window.GetHeight() * (0.5 + text_height_adj() * 2)) - (box.image.GetHeight()/2);
 	box.z = 10;
 	box.sprite.SetPosition(box.x, box.y, box.z);
 
@@ -90,9 +102,12 @@ fun dialog_setup() {
 	hint.z = box.z + 1;
 	hint.sprite.SetPosition(hint.x, hint.y, hint.z);
 
-	global.dialog.box  = box;
-	global.dialog.pad  = pad;
-	global.dialog.hint = hint;
+	prompt.sprite = create_text(text, 0.5, 0.5 - text_height_adj()*1);
+
+	global.dialog.box    = box;
+	global.dialog.pad    = pad;
+	global.dialog.hint   = hint;
+	global.dialog.prompt = prompt;
 
 	dialog_opacity(1);
 }
@@ -101,6 +116,8 @@ fun dialog_opacity(opacity) {
 	dialog.box.sprite.SetOpacity(opacity);
 	dialog.pad.sprite.SetOpacity(opacity);
 	dialog.hint.sprite.SetOpacity(opacity);
+	dialog.prompt.sprite[0].sprite.SetOpacity(opacity);
+	dialog.prompt.sprite[1].sprite.SetOpacity(opacity);
 }
 
 #
@@ -123,8 +140,11 @@ fun display_password_callback(prompt, bullets) {
 	delete_text(global.text);
 	
 	if(!global.dialog) {
-		dialog_setup();
+		dialog_setup(prompt);
 	} else {
+		delete_text(global.prompt.sprite);
+	        global.prompt.sprite = create_text(prompt, 0.5, box.y - text_height_adj()*2);
+
 		dialog_opacity(1);
 	}
 	
@@ -176,13 +196,12 @@ Plymouth.SetHideMessageFunction(hide_message_callback);
 # Animation code
 #
 
-
-if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.GetMode() == "system-upgrade" || Plymouth.GetMode() == "firmware-upgrade") {
+if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.GetMode() == "system-upgrade" || Plymouth.GetMode() == "firmware-upgrade" || Plymouth.GetMode() == "system-reset") {
 	progress_box.image = Image("progress_box.png");
 	progress_box.image_scaled = progress_box.image.Scale(progress_box.image.GetWidth() * 2 * scale, progress_box.image.GetHeight() * 2 * scale); 
 	progress_box.sprite = Sprite(progress_box.image_scaled);
 	progress_box.x = (Window.GetWidth() / 2) - (progress_box.image_scaled.GetWidth() / 2);
-	progress_box.y = (Window.GetHeight() * 0.65) - (progress_box.image_scaled.GetHeight() / 2);
+	progress_box.y = (Window.GetHeight() * (0.5 + text_height_adj() * 4)) - (progress_box.image_scaled.GetHeight() / 2);
 	progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
 	progress_box.sprite.SetOpacity(1);
 	
@@ -203,11 +222,12 @@ if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.
 		message = "Upgrading system";
 	else if(Plymouth.GetMode() == "firmware-upgrade") {
 		message = "Upgrading system firmware";
-		text = create_text_color("DO NOT POWER OFF SYSTEM!", 0.5, 0.05, 1, 0, 0); 
-	}
+		warning = create_text_color("DO NOT POWER OFF SYSTEM!", 0.5, 0.5+text_height_adj(), 1, 0, 0); 
+	} else if(Plymouth.GetMode() == "system-reset") {
+		message = "Deleting world";
+        }
 
-	text = create_text(message, 0.5, 0.45); 
-	global.text = text;
+	text = create_text(message, 0.5, 0.5 - text_height_adj()); 
 
 	fun progress_callback(duration, progress) {
 		if(global.status != "password") {
@@ -218,7 +238,7 @@ if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.
 
 	fun update_status_callback(text) {
 		delete_text(global.status_message);
-		global.status_message = create_text(text, 0.5, 0.55); 
+		global.status_message = create_text(text, 0.5, 0.5 + 2.5*text_height_adj()); 
 	}
 
 	Plymouth.SetUpdateStatusFunction(update_status_callback);
@@ -226,16 +246,16 @@ if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.
 }
 
 if (Plymouth.GetMode() == "shutdown") {
-	text = create_text("Saving files and shutting down", 0.5, 0.5); 
+	text = create_text("Saving files and shutting down", 0.5, 0.5 + text_height_adj()); 
 }
 
 if (Plymouth.GetMode() == "reboot") {
-	text = create_text("Restarting", 0.5, 0.5); 
+	text = create_text("Restarting", 0.5, 0.5 + text_height_adj()); 
 }
 
 # Only shown if you somehow break this
 if (Plymouth.GetMode() == "unknown") {
-	text = create_text("This goes great with MineGRUB", 0.5, 0.5); 
+	text = create_text("This goes great with MineGRUB", 0.5, 0.5 + text_height_adj()); 
 }
 
 
