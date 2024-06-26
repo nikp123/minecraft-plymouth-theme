@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-PLYMOUTH_THEME_BASEDIR=/usr/share/plymouth/themes/mc
-FONTCONFIG_PATH=/etc/fonts/conf.d/
+PLYMOUTH_THEME_BASEDIR=${PLYMOUTH_THEME_BASEDIR:=/usr/share/plymouth/themes/mc}
+FONTCONFIG_PATH=${FONTCONFIG_PATH:=/etc/fonts/conf.d/}
 
 # Check for ImageMagick
-which convert >/dev/null 2>&1
+which magick >/dev/null 2>&1
 [[ $? -ne 0 ]] && \
-	echo "Please install ImageMagick ('convert' command)" && \
+	echo "Please install ImageMagick ('magick' command)" && \
 	exit 1
 
 # Copy font config
