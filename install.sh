@@ -36,3 +36,7 @@ done
 # Install dracut config
 install -v -d -m 0755 /etc/dracut.conf.d
 install -v -m 0644 ./dracut/* /etc/dracut.conf.d/99-minecraft-plymouth.conf
+
+# Install mkinitcpio config
+install -v -d -m 0755 /etc/mkinitcpio.conf.d
+install -v -m 0644 ./mkinitcpio/* /etc/mkinitcpio.conf.d/99-minecraft-plymouth.conf
