@@ -50,7 +50,7 @@ fun text_height(text) {
 }
 
 fun text_height_adj() {
-	return text_height(global.textblank) / Window.GetHeight() / global.scale;
+	return text_height(global.textblank) / Window.GetHeight();
 }
 
 # lets avoid autoscaling because it breaks things :)
