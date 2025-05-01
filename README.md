@@ -19,8 +19,7 @@ But it also can be used alone, I am not here to judge.
 
 ### How do I install?
 
-If you aren't on a OS that doesn't abide by POSIX filesystem structure
-(like NixOS), the installation is as simple as:
+If you use a OS which follows the POSIX filesystem structure (``/etc``, ``/usr`` and friends), the installation is as simple as:
 
 First, install ``git``, ``plymouth`` and ``imagemagick``.
 
@@ -36,18 +35,14 @@ And do the following:
 Reboot, and you'll have the boot screen installed.
 
 
-For those users who break POSIX standards, you're on your own. 
-
-*You chose this path*.
-
-
 ### Distros and whatnot?
 
-I've only tested this on a Void Linux machine, but in theory it should work on
-any distro as long as it has the appropriate initrd files are in place.
+So far I've tested this on:
+Void Linux and Arch Linux (and a teeny tiny bit of NixOS, but I think it's kinda broken atm)
 
-For now only ``dracut`` is supported. But adding other initrd mechanisms should
-be fairly simple.
+Other distros *might* work but it would require that their initrd generator is aware of plymouth and this theme, and pulls in the correct files.
+
+So far both ``mkinitcpio`` and ``dracut`` initrd systems are supported. But adding others should be fairly simple.
 
 
 #### Sidenotes
