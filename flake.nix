@@ -27,7 +27,10 @@
             bash
           ];
 
+          # Slightly modified compared to ./install.sh
           installPhase = ''
+            # Change outpaths from /usr to the path in the nix store
+            sed -i "s@\/usr\/@$out\/@" ./plymouth/mc.plymouth
             PLYMOUTH_THEME_BASEDIR=$out/share/plymouth/themes/mc
             FONTCONFIG_PATH=$out/fonts/conf.d/
 
@@ -45,7 +48,7 @@
             # Create smaller versions of assets
             for j in "padlock" "bar"; do
               for i in $(seq 1 6); do
-                convert ./plymouth/$j.png -interpolate Nearest -filter point -resize "$i"00% $PLYMOUTH_THEME_BASEDIR/$j-"$i".png
+                magick ./plymouth/$j.png -interpolate Nearest -filter point -resize "$i"00% $PLYMOUTH_THEME_BASEDIR/$j-"$i".png
               done
             done
 
