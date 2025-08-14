@@ -48,7 +48,7 @@
             # Create smaller versions of assets
             for j in "padlock" "bar"; do
               for i in $(seq 1 6); do
-                convert ./plymouth/$j.png -interpolate Nearest -filter point -resize "$i"00% $PLYMOUTH_THEME_BASEDIR/$j-"$i".png
+                magick ./plymouth/$j.png -interpolate Nearest -filter point -resize "$i"00% $PLYMOUTH_THEME_BASEDIR/$j-"$i".png
               done
             done
 
