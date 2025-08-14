@@ -27,7 +27,10 @@
             bash
           ];
 
+          # Slightly modified compared to ./install.sh
           installPhase = ''
+            # Change outpaths from /usr to the path in the nix store
+            sed -i "s@\/usr\/@$out\/@" ./plymouth/mc.plymouth
             PLYMOUTH_THEME_BASEDIR=$out/share/plymouth/themes/mc
             FONTCONFIG_PATH=$out/fonts/conf.d/
 
