@@ -21,7 +21,7 @@ But it also can be used alone, I am not here to judge.
 
 If you use a OS which follows the POSIX filesystem structure (``/etc``, ``/usr`` and friends), the installation is as simple as:
 
-First, install ``git``, ``plymouth`` and ``imagemagick``.
+First, install ``git``, ``plymouth`` and ``imagemagick``. On Fedora, also install ``plymouth-plugin-script``.
 
 And do the following:
 
