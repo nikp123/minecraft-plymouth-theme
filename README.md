@@ -19,20 +19,25 @@ But it also can be used alone, I am not here to judge.
 
 ### How do I install?
 
-If you use a OS which follows the POSIX filesystem structure (``/etc``, ``/usr`` and friends), the installation is as simple as:
-
 First, install ``git``, ``plymouth`` and ``imagemagick``. On Fedora, also install ``plymouth-plugin-script``.
 
-And do the following:
-
-```
-    git clone https://github.com/nikp123/minecraft-plymouth-theme
-    cd minecraft-plymouth-theme
-    sudo ./install.sh
-    plymouth-set-default-theme -R mc
+```bash
+git clone https://github.com/nikp123/minecraft-plymouth-theme
+cd minecraft-plymouth-theme
+sudo ./install.sh
+plymouth-set-default-theme -R mc
 ```
 
 Reboot, and you'll have the boot screen installed.
+
+#### Installation Options
+
+```bash
+sudo ./install.sh           # Install theme
+./install.sh --dry-run      # Preview installation (no root needed)
+sudo ./install.sh --uninstall  # Remove theme
+./install.sh --verbose      # Show detailed output
+```
 
 
 ### Distros and whatnot?
