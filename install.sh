@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 NO_IMPURE=${NO_IMPURE:=0}
 IS_DRACUT=${IS_DRACUT:=$(
     ! [ -d /etc/dracut.conf.d ]
@@ -18,9 +16,12 @@ FONTCONFIG_PATH=${FONTCONFIG_PATH:=${FONT_PATH}/conf.d}
 
 # Check for ImageMagick
 
-type -fp magick >/dev/null 2>&1 ||
-    echo "Please install ImageMagick ('magick' command)" &&
+if ! type -fp magick >/dev/null 2>&1; then
+    echo "Please install ImageMagick ('magick' command)"
     exit 1
+fi
+
+set -e
 
 # Copy font config
 mkdir -p "${FONTCONFIG_PATH}"
