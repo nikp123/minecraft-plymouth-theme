@@ -19,5 +19,9 @@
             default = plymouth-minecraft-theme;
           };
         };
+      flake.nixosModules = rec {
+        plymouth-minecraft-theme = ./nixos.nix;
+        default = plymouth-minecraft-theme;
+      };
     };
 }
