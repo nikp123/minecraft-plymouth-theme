@@ -38,7 +38,9 @@ Reboot, and you'll have the boot screen installed.
 ### Distros and whatnot?
 
 So far I've tested this on:
-Void Linux and Arch Linux (and a teeny tiny bit of NixOS, but I think it's kinda broken atm)
+Arch Linux, Void Linux and NixOS. 
+
+Other users have reportedly tested this on Ubuntu and Fedora, but I can't make any statements about how they work there.
 
 Other distros *might* work but it would require that their initrd generator is aware of plymouth and this theme, and pulls in the correct files.
 
