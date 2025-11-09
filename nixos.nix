@@ -29,4 +29,9 @@ in
     theme = "mc";
     themePackages = [ cfg.package ];
   };
+
+  # Required so that the Minecraft font also appears during shutdown.
+  # The issue is that Plymouth NixOS module only includes the font
+  # inside of the initram and not on the rootfs.
+  fonts.packages = lib.mkIf cfg.enable [ cfg.package ];
 }
