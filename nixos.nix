@@ -26,6 +26,7 @@ in
   };
 
   config.boot.plymouth = lib.mkIf cfg.enable {
+    font = "${cfg.package}/share/fonts/OTF/Minecraft.otf";
     theme = "mc";
     themePackages = [ cfg.package ];
   };
