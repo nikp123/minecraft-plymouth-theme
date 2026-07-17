@@ -77,6 +77,10 @@ if [ "$IS_DRACUT" -eq 1 ]; then
     fi
 
     if [ ! -d "${PLYMOUTHLIBS_PATH}" ]; then
+        PLYMOUTHLIBS_PATH=/usr/lib/x86_64-linux-gnu/plymouth
+    fi
+
+    if [ ! -d "${PLYMOUTHLIBS_PATH}" ]; then
         echo "Please install Plymouth (On Fedora, plymouth-plugin-script)" &&
             exit 1
     fi
