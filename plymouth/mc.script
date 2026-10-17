@@ -1,123 +1,234 @@
 #
-# Text functions
+# Everything that depends on the screen size is built in layout(), which
+# runs at startup and again whenever a display is added or removed (e.g.
+# when the GPU driver takes over from the firmware framebuffer mid-boot).
 #
-fun create_text_color(text, x, y, r, g, b) {
-	t.image = Image.Text(text, r, g, b, 1, global.font);
-	s.image = Image.Text(text, r/4, g/4, b/4, 1, global.font);
-	y *= (Window.GetHeight() - t.image.GetHeight());
-	x *= (Window.GetWidth()  - t.image.GetWidth());
+# Watch out: inside functions, assigning to a name that also exists as a
+# global overwrites the global, so locals here are named to avoid that.
+#
 
-	t.sprite = Sprite(t.image);
-	s.sprite = Sprite(s.image);
-	t.sprite.SetPosition(x, y, 2);
-        # Plus here is intentional
-	s.sprite.SetPosition(x + global.scale, y + global.scale, 1);
-	t.sprite.SetOpacity(1);
-	s.sprite.SetOpacity(1);
-	return [t, s, text];
-}
+#
+# Scaling
+#
+fun update_scale() {
+	# lets avoid autoscaling because it breaks things :)
+	scale_width  = Math.Int(Window.GetWidth() / 640);
+	scale_height = Math.Int(Window.GetHeight() / 480);
+	global.scale = Math.Clamp(Math.Max(scale_width, scale_height), 1, 6);
+	global.font  = "Minecraft Regular " + 6.8*global.scale;
 
-# This language sucks
-fun delete_text(text) {
-	text[0].sprite.SetOpacity(0);
-	text[1].sprite.SetOpacity(0);
-}
-
-# sin, i know.
-fun undelete_text(text) {
-	text[0].sprite.SetOpacity(1.0);
-	text[1].sprite.SetOpacity(1.0);
-}
-
-fun create_text(text, x, y) {
-	return create_text_color(text, x, y, 1, 1, 1);
-}
-
-fun change_position(thing, x, y) {
-	y *= (Window.GetHeight() - thing[0].image.GetHeight());
-	x *= (Window.GetWidth()  - thing[0].image.GetWidth());
-	change_position_abs(thing, x, y);
-}
-
-fun change_position_abs(thing, x, y) {
-	thing[0].sprite.SetPosition(x, y, 2);
-	thing[1].sprite.SetPosition(x+global.scale, y+global.scale, 1);
-}
-
-fun text_height(text) {
-        # Plus here is intentional
-	return text[0].image.GetHeight() + global.scale;
+	# Plus here is intentional
+	global.line_height = Image.Text(" ", 1, 1, 1, 1, global.font).GetHeight() + global.scale;
 }
 
 fun text_height_adj() {
-	return text_height(global.textblank) / Window.GetHeight();
+	return global.line_height / Window.GetHeight();
 }
 
-# lets avoid autoscaling because it breaks things :)
-scale_width  = Math.Int(Window.GetWidth() / 640);
-scale_height = Math.Int(Window.GetHeight() / 480);
-scale = Math.Max(scale_width, scale_height, 1);
-scale = Math.Int(Math.Min(6, scale));
+#
+# Text functions
+#
+# x/y: 0 is the left/top edge, 1 the right/bottom edge, 0.5 is centered.
+# lines: shifts y by that many lines of text, so spacing survives rescaling.
+# group: "normal" or "dialog", decides when the label is visible.
+#
+labels = [];
+label_count = 0;
 
+fun label_new(text, x, y, lines, r, g, b, group) {
+	label.text    = text;
+	label.x       = x;
+	label.y       = y;
+	label.lines   = lines;
+	label.r       = r;
+	label.g       = g;
+	label.b       = b;
+	label.group   = group;
+	label.opacity = 1;
+	label.sprite  = Sprite();
+	label.shadow  = Sprite();
 
-font = "Minecraft Regular " + 6.8*global.scale;
+	global.labels[global.label_count] = label;
+	global.label_count++;
+	return label;
+}
 
+fun label_render(label) {
+	if (label.text) {
+		label.image        = Image.Text(label.text, label.r, label.g, label.b, 1, global.font);
+		label.shadow_image = Image.Text(label.text, label.r/4, label.g/4, label.b/4, 1, global.font);
+		label.sprite.SetImage(label.image);
+		label.shadow.SetImage(label.shadow_image);
+
+		x = label.x * (Window.GetWidth() - label.image.GetWidth());
+		y = (label.y + label.lines * text_height_adj()) * (Window.GetHeight() - label.image.GetHeight());
+		label.sprite.SetPosition(x, y, 2);
+		# Plus here is intentional
+		label.shadow.SetPosition(x + global.scale, y + global.scale, 1);
+	}
+	label_update_opacity(label);
+}
+
+fun label_update_opacity(label) {
+	opacity = label.opacity;
+	if (!label.text)
+		opacity = 0;
+	label.sprite.SetOpacity(opacity);
+	label.shadow.SetOpacity(opacity);
+}
+
+#
+# Background
+#
 Window.SetBackgroundTopColor(0.5, 0.5, 0.5);
 Window.SetBackgroundBottomColor(0.5, 0.5, 0.5);
 
-textblank = create_text(" ", 0, 0); 
+background.sprite = Sprite();
 
-background.image_scaled = Image("dirt-" + scale*2 + ".png"); 
-
-# Simple tiling
-background.image_tiled  = background.image_scaled.Tile(Window.GetWidth(), Window.GetHeight());
-background.sprite       = Sprite(background.image_tiled);
-background.sprite.SetPosition(0, 0, -1);
-background.sprite.SetOpacity(1);
-
-
-status = "normal";	
-status_message = []; 
-
-fun dialog_setup(text) {
-	box.image = Image("bar-" + scale  + ".png");
-	box.sprite = Sprite(box.image);
-	box.x = (Window.GetWidth() - box.image.GetWidth()) / 2;
-	box.y = (Window.GetHeight() * (0.5 + text_height_adj() * 2)) - (box.image.GetHeight()/2);
-	box.z = 10;
-	box.sprite.SetPosition(box.x, box.y, box.z);
-
-	pad.image = Image("padlock-" + scale + ".png");
-	pad.sprite = Sprite(pad.image);
-	pad.x = box.x - pad.image.GetWidth() * 1.5;
-	pad.y = box.y;
-	pad.z = box.z;
-	pad.sprite.SetPosition(pad.x, pad.y, pad.z);
-
-	hint.text=" ";
-	hint.image = Image.Text(hint.text, 1, 1, 1, 1, global.font);
-	hint.sprite = Sprite(hint.image);
-	hint.x = box.x + pad.image.GetHeight() / 4;
-	hint.y = box.y + pad.image.GetHeight() / 4;
-	hint.z = box.z + 1;
-	hint.sprite.SetPosition(hint.x, hint.y, hint.z);
-
-	prompt.sprite = create_text(text, 0.5, 0.5 - text_height_adj()*1);
-
-	global.dialog.box    = box;
-	global.dialog.pad    = pad;
-	global.dialog.hint   = hint;
-	global.dialog.prompt = prompt;
-
-	dialog_opacity(1);
+fun background_layout() {
+	background.image_scaled = Image("dirt-" + global.scale*2 + ".png");
+	# Simple tiling
+	background.image_tiled  = background.image_scaled.Tile(Window.GetWidth(), Window.GetHeight());
+	background.sprite.SetImage(background.image_tiled);
+	background.sprite.SetPosition(0, 0, -1);
+	background.sprite.SetOpacity(1);
 }
 
-fun dialog_opacity(opacity) {
-	dialog.box.sprite.SetOpacity(opacity);
-	dialog.pad.sprite.SetOpacity(opacity);
-	dialog.hint.sprite.SetOpacity(opacity);
-	dialog.prompt.sprite[0].sprite.SetOpacity(opacity);
-	dialog.prompt.sprite[1].sprite.SetOpacity(opacity);
+#
+# Progress bar
+#
+has_progress = 0;
+progress = 0;
+got_system_update = 0;
+
+fun progress_layout() {
+	progress_box.image_scaled = progress_box.image.Scale(progress_box.image.GetWidth() * 2 * global.scale, progress_box.image.GetHeight() * 2 * global.scale);
+	progress_box.sprite.SetImage(progress_box.image_scaled);
+	progress_box.x = (Window.GetWidth() / 2) - (progress_box.image_scaled.GetWidth() / 2);
+	progress_box.y = (Window.GetHeight() * (0.5 + text_height_adj() * 4)) - (progress_box.image_scaled.GetHeight() / 2);
+	progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
+	progress_bar.sprite.SetPosition(progress_box.x, progress_box.y, 2);
+	progress_render();
+}
+
+fun progress_render() {
+	width = progress_box.image_scaled.GetWidth() * global.progress;
+	if (global.status == "password" || width < 1) {
+		progress_bar.sprite.SetOpacity(0);
+		return;
+	}
+	progress_bar.image_scaled = progress_bar.image.Scale(width, progress_box.image_scaled.GetHeight());
+	progress_bar.sprite.SetImage(progress_bar.image_scaled);
+	progress_bar.sprite.SetOpacity(1);
+}
+
+#
+# Password dialog
+#
+dialog.created = 0;
+
+fun dialog_create() {
+	dialog.created      = 1;
+	dialog.box.sprite   = Sprite();
+	dialog.pad.sprite   = Sprite();
+	dialog.hint.sprite  = Sprite();
+	dialog.hint.text    = "";
+	dialog.prompt       = label_new("", 0.5, 0.5, -1, 1, 1, 1, "dialog");
+	dialog_layout();
+	label_render(dialog.prompt);
+}
+
+fun dialog_layout() {
+	dialog.box.image = Image("bar-" + global.scale + ".png");
+	dialog.box.sprite.SetImage(dialog.box.image);
+	dialog.box.x = (Window.GetWidth() - dialog.box.image.GetWidth()) / 2;
+	dialog.box.y = (Window.GetHeight() * (0.5 + text_height_adj() * 2)) - (dialog.box.image.GetHeight() / 2);
+	dialog.box.sprite.SetPosition(dialog.box.x, dialog.box.y, 10);
+
+	dialog.pad.image = Image("padlock-" + global.scale + ".png");
+	dialog.pad.sprite.SetImage(dialog.pad.image);
+	dialog.pad.sprite.SetPosition(dialog.box.x - dialog.pad.image.GetWidth() * 1.5, dialog.box.y, 10);
+
+	dialog.hint.sprite.SetPosition(dialog.box.x + dialog.pad.image.GetHeight() / 4, dialog.box.y + dialog.pad.image.GetHeight() / 4, 11);
+	dialog_render_hint();
+}
+
+fun dialog_render_hint() {
+	if (global.status != "password" || !dialog.hint.text) {
+		dialog.hint.sprite.SetOpacity(0);
+		return;
+	}
+	dialog.hint.image = Image.Text(dialog.hint.text, 1, 1, 1, 1, global.font);
+	dialog.hint.sprite.SetImage(dialog.hint.image);
+	dialog.hint.sprite.SetOpacity(1);
+}
+
+#
+# Layout and visibility
+#
+status = "normal";
+
+fun layout() {
+	# No displays at all, e.g. between simpledrm going away and the real
+	# GPU driver showing up. Wait for the next hotplug.
+	if (Window.GetWidth() < 1 || Window.GetHeight() < 1)
+		return;
+
+	update_scale();
+	background_layout();
+	for (i = 0; i < global.label_count; i++) {
+		label_render(global.labels[i]);
+	}
+	if (global.has_progress)
+		progress_layout();
+	if (dialog.created)
+		dialog_layout();
+}
+
+fun update_visibility() {
+	normal_alpha = 1;
+	dialog_alpha = 0;
+	if (global.status == "password") {
+		normal_alpha = 0;
+		dialog_alpha = 1;
+	}
+
+	for (i = 0; i < global.label_count; i++) {
+		if (global.labels[i].group == "dialog")
+			global.labels[i].opacity = dialog_alpha;
+		else
+			global.labels[i].opacity = normal_alpha;
+		label_update_opacity(global.labels[i]);
+	}
+
+	if (global.has_progress) {
+		progress_box.sprite.SetOpacity(normal_alpha);
+		progress_render();
+	}
+
+	if (dialog.created) {
+		dialog.box.sprite.SetOpacity(dialog_alpha);
+		dialog.pad.sprite.SetOpacity(dialog_alpha);
+		dialog_render_hint();
+	}
+}
+
+#
+# Status line: shows the newest message (e.g. "Installing Updates - 42%"
+# from PackageKit), or the boot status when there are no messages.
+#
+status_text = "";
+messages = [];
+message_count = 0;
+
+fun update_subtitle() {
+	text = global.status_text;
+	for (i = 0; i < global.message_count; i++) {
+		if (global.messages[i])
+			text = global.messages[i];
+	}
+	subtitle.text = text;
+	label_render(subtitle);
 }
 
 #
@@ -125,65 +236,64 @@ fun dialog_opacity(opacity) {
 #
 fun display_normal_callback() {
 	global.status = "normal";
-	
-	global.progress_box.sprite.SetOpacity(1);
-	global.progress_bar.sprite.SetOpacity(1);
-	dialog_opacity(0);
-	undelete_text(global.text);
+	update_visibility();
 }
 
 fun display_password_callback(prompt, bullets) {
 	global.status = "password";
 
-	global.progress_box.sprite.SetOpacity(0);
-	global.progress_bar.sprite.SetOpacity(0);
-	delete_text(global.text);
-	
-	if(!global.dialog) {
-		dialog_setup(prompt);
-	} else {
-		delete_text(global.prompt.sprite);
-	        global.prompt.sprite = create_text(prompt, 0.5, box.y - text_height_adj()*2);
+	if (!dialog.created)
+		dialog_create();
 
-		dialog_opacity(1);
+	hinttext = "";
+	for (i = 0; i < bullets && i < 41; i++) {
+		hinttext += "*";
 	}
-	
-	hinttext="";
-	for(i=0; i < bullets && i < 41; i++) {
-		hinttext += "*";	
-	}
-	if(bullets >= 41) {
+	if (bullets >= 41) {
 		hinttext = "..." + hinttext;
 	}
 
-	global.dialog.hint.image = Image.Text(hinttext, 1, 1, 1, 1, global.font);
-	global.dialog.hint.sprite.SetImage(global.dialog.hint.image);
+	dialog.prompt.text = prompt;
+	dialog.hint.text = hinttext;
+	label_render(dialog.prompt);
+	update_visibility();
 }
 
 fun quit_callback() {
 }
 
-messages = [];
-message_latest = 0;
 fun display_message_callback(text) {
-	messages[message_latest] = create_text(text, 0, 1);
-	height = Window.GetHeight() - text_height(messages[0]);
-	for(i = message_latest - 1; i >= 0; i--) {
-		if(messages[i] == NULL)
-			continue;
-		height -= text_height(messages[i+1]);
-		change_position_abs(messages[i], 0, height);
-	}	
-	message_latest++;
+	global.messages[global.message_count] = text;
+	global.message_count++;
+	update_subtitle();
 }
 
 fun hide_message_callback(text) {
-	for(i = 0; i < message_latest; i++) {
-		if(messages[i][2] == text) {
-			delete_text(text);
-			messages[i] = NULL;
-		}
+	for (i = 0; i < global.message_count; i++) {
+		if (global.messages[i] == text)
+			global.messages[i] = "";
 	}
+	update_subtitle();
+}
+
+fun update_status_callback(text) {
+	global.status_text = text;
+	update_subtitle();
+}
+
+# Estimated boot progress, only meaningful while booting
+fun progress_callback(duration, progress) {
+	if (Plymouth.GetMode() == "boot" && !global.got_system_update) {
+		global.progress = progress;
+		progress_render();
+	}
+}
+
+# Real progress (0-100) sent by update tools like PackageKit, dnf5 and fwupd
+fun system_update_callback(percent) {
+	global.got_system_update = 1;
+	global.progress = Math.Clamp(percent / 100, 0, 1);
+	progress_render();
 }
 
 Plymouth.SetDisplayNormalFunction(display_normal_callback);
@@ -192,70 +302,57 @@ Plymouth.SetQuitFunction(quit_callback);
 Plymouth.SetDisplayMessageFunction(display_message_callback);
 Plymouth.SetHideMessageFunction(hide_message_callback);
 
+# Older Plymouth versions don't have these
+if (Plymouth.SetDisplayHotplugFunction)
+	Plymouth.SetDisplayHotplugFunction(layout);
+
 #
-# Animation code
+# Mode specific setup
 #
+splash_mode = Plymouth.GetMode();
 
-if (Plymouth.GetMode() == "boot" || Plymouth.GetMode() == "updates" || Plymouth.GetMode() == "system-upgrade" || Plymouth.GetMode() == "firmware-upgrade" || Plymouth.GetMode() == "system-reset") {
-	progress_box.image = Image("progress_box.png");
-	progress_box.image_scaled = progress_box.image.Scale(progress_box.image.GetWidth() * 2 * scale, progress_box.image.GetHeight() * 2 * scale); 
-	progress_box.sprite = Sprite(progress_box.image_scaled);
-	progress_box.x = (Window.GetWidth() / 2) - (progress_box.image_scaled.GetWidth() / 2);
-	progress_box.y = (Window.GetHeight() * (0.5 + text_height_adj() * 4)) - (progress_box.image_scaled.GetHeight() / 2);
-	progress_box.sprite.SetPosition(progress_box.x, progress_box.y, 1);
-	progress_box.sprite.SetOpacity(1);
-	
-	progress_bar.image = Image("progress_bar.png");
-	progress_bar.image_scaled = progress_bar.image.Scale(progress_bar.image.GetWidth() * 2 * scale, progress_bar.image.GetHeight() * 2 * scale); 
-	progress_bar.sprite = Sprite(progress_bar.image_scaled);
-	progress_bar.x = progress_box.x;
-	progress_bar.y = progress_box.y;
-	progress_bar.sprite.SetPosition(progress_bar.x, progress_bar.y, 2);
-	progress_bar.sprite.SetOpacity(1);
+if (splash_mode == "boot" || splash_mode == "updates" || splash_mode == "system-upgrade" || splash_mode == "firmware-upgrade" || splash_mode == "system-reset") {
+	has_progress = 1;
+	progress_box.image  = Image("progress_box.png");
+	progress_box.sprite = Sprite();
+	progress_bar.image  = Image("progress_bar.png");
+	progress_bar.sprite = Sprite();
 
-	message = "This animation has bugged!";
-	if(Plymouth.GetMode() == "boot")
-		message = "Booting OS";
-	else if(Plymouth.GetMode() == "updates")
-		message = "Updating";
-	else if(Plymouth.GetMode() == "system-upgrade")
-		message = "Upgrading system";
-	else if(Plymouth.GetMode() == "firmware-upgrade") {
-		message = "Upgrading system firmware";
-		warning = create_text_color("DO NOT POWER OFF SYSTEM!", 0.5, 0.5+text_height_adj(), 1, 0, 0); 
-	} else if(Plymouth.GetMode() == "system-reset") {
-		message = "Deleting world";
-        }
-
-	text = create_text(message, 0.5, 0.5 - text_height_adj()); 
-
-	fun progress_callback(duration, progress) {
-		if(global.status != "password") {
-			progress_bar.image_scaled_new = progress_bar.image.Scale(progress_box.image.GetWidth() * 2 * scale * progress, progress_bar.image.GetHeight() * 2 * scale); 
-			progress_bar.sprite.SetImage(progress_bar.image_scaled_new);
-		}
+	title_text = "This animation has bugged!";
+	if (splash_mode == "boot")
+		title_text = "Booting OS";
+	else if (splash_mode == "updates")
+		title_text = "Updating";
+	else if (splash_mode == "system-upgrade")
+		title_text = "Upgrading system";
+	else if (splash_mode == "firmware-upgrade") {
+		title_text = "Upgrading system firmware";
+		warning = label_new("DO NOT POWER OFF SYSTEM!", 0.5, 0.5, 1, 1, 0, 0, "normal");
+	} else if (splash_mode == "system-reset") {
+		title_text = "Deleting world";
 	}
 
-	fun update_status_callback(text) {
-		delete_text(global.status_message);
-		global.status_message = create_text(text, 0.5, 0.5 + 2.5*text_height_adj()); 
-	}
+	title = label_new(title_text, 0.5, 0.5, -1, 1, 1, 1, "normal");
 
 	Plymouth.SetUpdateStatusFunction(update_status_callback);
 	Plymouth.SetBootProgressFunction(progress_callback);
+	if (Plymouth.SetSystemUpdateFunction)
+		Plymouth.SetSystemUpdateFunction(system_update_callback);
 }
 
-if (Plymouth.GetMode() == "shutdown") {
-	text = create_text("Saving files and shutting down", 0.5, 0.5 + text_height_adj()); 
+if (splash_mode == "shutdown") {
+	title = label_new("Saving files and shutting down", 0.5, 0.5, 1, 1, 1, 1, "normal");
 }
 
-if (Plymouth.GetMode() == "reboot") {
-	text = create_text("Restarting", 0.5, 0.5 + text_height_adj()); 
+if (splash_mode == "reboot") {
+	title = label_new("Restarting", 0.5, 0.5, 1, 1, 1, 1, "normal");
 }
 
 # Only shown if you somehow break this
-if (Plymouth.GetMode() == "unknown") {
-	text = create_text("This goes great with MineGRUB", 0.5, 0.5 + text_height_adj()); 
+if (splash_mode == "unknown") {
+	title = label_new("This goes great with MineGRUB", 0.5, 0.5, 1, 1, 1, 1, "normal");
 }
 
+subtitle = label_new("", 0.5, 0.5, 2.5, 1, 1, 1, "normal");
 
+layout();
